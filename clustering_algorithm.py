@@ -37,7 +37,9 @@ class Clusters:
         self.center_id = []
         self.x_center = []
         self.y_center = []
+        # Gonna write a function that will compare the two for me...
         self.closest_point = []
+        self.new_closest_point = []
         self.fill_x_y_coordinate_lists()
         self.x_min, self.x_max, self.y_min, self.y_max = self.get_ranges()
         self.check = False
@@ -69,6 +71,20 @@ class Clusters:
                     closest_center = center + 1
             self.closest_point.append(closest_center)
         return self.closest_point
+
+    def new_calc_closest_points(self):
+        # closest_point = []
+        for i in range(0, len(self.x_coordinates)):
+            closest_distance = 1000000000
+            for center in range(0, len(self.center_id)):
+                # distance = sqrt((x-x)^2 + (y-y)^2)
+                distance = math.sqrt(
+                    ((self.x_coordinates[i] - self.x_center[center]) ** 2) + ((self.y_coordinates[i] - self.y_center[center]) ** 2))
+                if (distance < closest_distance):
+                    closest_distance = distance
+                    closest_center = center + 1
+            self.new_closest_point.append(closest_center)
+        # return self.closest_point
 
     #############################################
     # Get randomly generated starting points    #
@@ -166,6 +182,33 @@ class Clusters:
             self.new_y_center.append(avg_y)
             self.new_center_id.append(i+1)
 
+    def compare(self):
+        self.new_calc_closest_points()
+        comparisons = 1
+        if (self.closest_point == self.new_closest_point):
+            for item in range(0, len(self.closest_point)):
+                self.outfile_handle.write(
+                    f"{self.x_coordinates[item]}\t{self.y_coordinates[item]}\t{self.closest_point[item]}\n")
+        # If not, repeat recalculation of centers and reassignation of points until lists are the same twice in a row, or we run out of iterations
+        else:
+            while (self.closest_point != self.new_closest_point):
+                if (comparisons < self.max_iter):
+                    self.closest_point = self.new_closest_point
+                    # new_center_id, new_x_center, new_y_center = recalculate_cluster_center(k, x_coordinates, y_coordinates, closest_point, center_id)
+                    self.recalculate_cluster_center()
+                    # new_closest_point = calc_closest_points(x_coordinates, y_coordinates, new_x_center, new_y_center, new_center_id)
+                    self.new_calc_closest_points()
+                    comparisons = comparisons + 1
+                    if (self.closest_point == self.new_closest_point):
+                        for item in range(0, len(self.closest_point)):
+                            self.outfile_handle.write(
+                                f"{self.x_coordinates[item]}\t{self.y_coordinates[item]}\t{self.closest_point[item]}\n")
+                else:
+                    for item in range(0, len(self.new_closest_point)):
+                        self.outfile_handle.write(
+                            f"{self.x_coordinates[item]}\t{self.y_coordinates[item]}\t{self.new_closest_point[item]}\n")
+                    print("The maximum number of iterations has been reached without convergence.")
+                    break
 
 
 
@@ -361,7 +404,8 @@ def main():
 
     # NEW WITH CLASSES
     # arr = sys.argv[1:]
-    newcluster = Clusters(sys.argv[1:])
+    myclusters = Clusters(sys.argv[1:])
+    myclusters.compare()
     # END NEW
 
 
@@ -405,39 +449,39 @@ def main():
 
 
     # NEW WITH CLASSES
-    closest_point = newcluster.calc_closest_points()        # original closest points
-    newcluster.recalculate_cluster_center()                 # recalc cluster centers
-    new_closest_point = newcluster.calc_closest_points()    # new closest points
+#   closest_point = newcluster.calc_closest_points()        # original closest points
+#   newcluster.recalculate_cluster_center()                 # recalc cluster centers
+#   new_closest_point = newcluster.calc_closest_points()    # new closest points
     # END NEW
 
 
     # May make the last bit classy too? unsure but this seemed to work ok
 
 
-    # If the lists of cluster center assignations are the same, we're done!
-    # MAKE A SEPARATE FUNCION MAYBE?
-    comparisons = 1
-    if (closest_point == new_closest_point):
-        for item in range(0, len(closest_point)):
-            newcluster.outfile_handle.write(f"{newcluster.x_coordinates[item]}\t{newcluster.y_coordinates[item]}\t{closest_point[item]}\n")
-    # If not, repeat recalculation of centers and reassignation of points until lists are the same twice in a row, or we run out of iterations
-    else:
-        while (closest_point != new_closest_point):
-            if (comparisons < newcluster.max_iter):
-                closest_point = new_closest_point
-                # new_center_id, new_x_center, new_y_center = recalculate_cluster_center(k, x_coordinates, y_coordinates, closest_point, center_id)
-                newcluster.recalculate_cluster_center()
-                # new_closest_point = calc_closest_points(x_coordinates, y_coordinates, new_x_center, new_y_center, new_center_id)
-                new_closest_point = newcluster.calc_closest_points()
-                comparisons = comparisons + 1
-                if (closest_point == new_closest_point):
-                    for item in range(0, len(closest_point)):
-                        newcluster.outfile_handle.write(f"{newcluster.x_coordinates[item]}\t{newcluster.y_coordinates[item]}\t{closest_point[item]}\n")
-            else:
-                for item in range(0, len(new_closest_point)):
-                    newcluster.outfile_handle.write(f"{newcluster.x_coordinates[item]}\t{newcluster.y_coordinates[item]}\t{new_closest_point[item]}\n")
-                print("The maximum number of iterations has been reached without convergence.")
-                break
+#   # If the lists of cluster center assignations are the same, we're done!
+#   # MAKE A SEPARATE FUNCION MAYBE?
+#   comparisons = 1
+#   if (closest_point == new_closest_point):
+#       for item in range(0, len(closest_point)):
+#           newcluster.outfile_handle.write(f"{newcluster.x_coordinates[item]}\t{newcluster.y_coordinates[item]}\t{closest_point[item]}\n")
+#   # If not, repeat recalculation of centers and reassignation of points until lists are the same twice in a row, or we run out of iterations
+#   else:
+#       while (closest_point != new_closest_point):
+#           if (comparisons < newcluster.max_iter):
+#               closest_point = new_closest_point
+#               # new_center_id, new_x_center, new_y_center = recalculate_cluster_center(k, x_coordinates, y_coordinates, closest_point, center_id)
+#               newcluster.recalculate_cluster_center()
+#               # new_closest_point = calc_closest_points(x_coordinates, y_coordinates, new_x_center, new_y_center, new_center_id)
+#               new_closest_point = newcluster.calc_closest_points()
+#               comparisons = comparisons + 1
+#                if (closest_point == new_closest_point):
+#                    for item in range(0, len(closest_point)):
+#                       newcluster.outfile_handle.write(f"{newcluster.x_coordinates[item]}\t{newcluster.y_coordinates[item]}\t{closest_point[item]}\n")
+#            else:
+#                for item in range(0, len(new_closest_point)):
+#                    newcluster.outfile_handle.write(f"{newcluster.x_coordinates[item]}\t{newcluster.y_coordinates[item]}\t{new_closest_point[item]}\n")
+#                print("The maximum number of iterations has been reached without convergence.")
+#                break
 
 
 main()
