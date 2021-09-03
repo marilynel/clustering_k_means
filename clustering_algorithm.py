@@ -10,6 +10,7 @@
 import sys
 import random
 import math
+import matplotlib.pyplot as plt
 
 
 #################################
@@ -101,7 +102,7 @@ class Clusters:
     def fill_x_y_coordinate_lists(self):
         for rawline in self.points_file_handle:
             line = rawline.rstrip()
-            x_value, y_value = line.split("\t")
+            x_value, y_value = line.split()
             self.x_coordinates.append(float(x_value))
             self.y_coordinates.append(float(y_value))
 
@@ -154,6 +155,9 @@ class Clusters:
     # Find average of points in a cluster and find new cluster center #
     ###################################################################
     def recalculate_cluster_center(self):
+        self.new_x_center = []
+        self.new_y_center = []
+        self.new_center_id = []
         for i in range(0, self.k):
             total = 0
             sum_of_x = 0
@@ -172,31 +176,28 @@ class Clusters:
             avg_y = sum_of_y / total
             self.new_x_center.append(avg_x)
             self.new_y_center.append(avg_y)
-            self.new_y_center.append(avg_y)
             self.new_center_id.append(i+1)
 
     def compare(self):
+        self.graph()
         self.recalculate_cluster_center()
         self.new_calc_closest_points()
         comparisons = 1
-        if (self.closest_point == self.new_closest_point):
-            self.write_to_file()
-        else:
-            while (self.closest_point != self.new_closest_point):
-                if (comparisons < self.max_iter):
-                    self.not_converged_action()
-                    comparisons = comparisons + 1
-                else:
-                    self.write_to_file()
-                    print("The maximum number of iterations has been reached without convergence.")
-                    break
+        while ((self.x_center != self.new_x_center) or (self.y_center != self.new_y_center)):
+            self.graph()
+            if (comparisons < self.max_iter):
+                self.not_converged_action()
+                comparisons = comparisons + 1
+            else:
+                self.write_to_file()
+                print("The maximum number of iterations has been reached without convergence.")
+                break
+
 
     def not_converged_action(self):
         self.closest_point = self.new_closest_point
         self.x_center = self.new_x_center
         self.y_center = self.new_y_center
-        self.new_x_center = []
-        self.new_y_center = []
         self.recalculate_cluster_center()
         self.new_calc_closest_points()
         if (self.closest_point == self.new_closest_point):
@@ -248,6 +249,82 @@ class Clusters:
         # print(self.x_center)
         # print(self.y_center)
 
+    def graph(self):
+        plt.style.use('seaborn-whitegrid')
+        shapes = ["v", "^", "<", ">", "1", "2", "3", "4", "8", "s"]
+        colors = ['#ff0000', '#00ff00', '#0000ff', "#888800", "#880088", "#008888", "#ee8844", "#88ee44",
+                  "#4488ee",
+                  "#44ee88"]
+        # cluster colors are red circle, blue circle, and green circle.
+        # cluster points are black <, black >, and black ^ shapes
+        plt.title("compare")
+        plt.scatter(self.x_coordinates, self.y_coordinates, c=colors[0], marker='o')
+        plt.scatter(self.new_x_center, self.new_y_center, c='k', marker='x')
+        plt.show()
+
+
+    #############################################################################################################
+    # Find the closest cluster center to the current cluster, using list of cluster center IDs and an index (?) #
+    #############################################################################################################
+    def find_nearest_cluster(self, current_index):
+        first_nearest_cluster = True
+        nearest_cluster = 0
+        nearest_cluster_index = 0
+
+        # Dad's code: cluster_centers == a list of tuples that is the x, y coordinates of the cluster centers
+        # equivalent to the individual x, y lists new_x_centers[], new_y_centers[] I have
+        for i in range(0, len(self.new_x_center)):
+            if (i == current_index):
+                continue                    # don't measure distance to self cause...duh
+            # measure distance to other cluster centers
+            distance = math.sqrt(((self.new_x_center[i] - self.new_x_center[current_index]) ** 2) + ((self.new_y_center[i] - self.new_y_center[current_index]) ** 2))
+            if (first_nearest_cluster):
+                first_nearest_cluster = False
+                nearest_cluster = distance
+                nearest_cluster_index = i
+            else:
+                if (distance < nearest_cluster):
+                    nearest_cluster = distance
+                    nearest_cluster_index = i
+        return nearest_cluster_index
+
+    ##########################################################################
+    # Calculates silhouette value for ever data point for a specific cluster #
+    ##########################################################################
+    def calc_silhouette(self):
+        # silhouette = (b-a)/max(a,b)
+        # a is average distance from center to each point within a cluster
+        # b is average distance from center to each point in the nearest cluster
+        silhouettes = []                    # silhouette values for each k
+        for i in range(0, self.k):
+            nearest_cluster_index = self.find_nearest_cluster(i)
+            silhouettes_for_this_cluster = 0
+            # find a: intracluster distances to centroid
+            distances_a = []
+            for j in range(0, len(self.x_coordinates)):
+                if (self.new_closest_point[j] == i + 1):
+                    distance = math.sqrt(((self.x_coordinates[j] - self.new_x_center[i]) ** 2) + ((self.y_coordinates[j] - self.new_y_center[i]) ** 2))
+                    distances_a.append(distance)
+            mean_dist_a = sum(distances_a) / len(distances_a)
+
+            # find b: intercluster distances of nearest cluster to centroid
+            distances_b = []
+            for j in range(0, len(self.x_coordinates)):
+                if (self.new_closest_point[j] == nearest_cluster_index):
+                    distance = math.sqrt(
+                        ((self.x_coordinates[j] - self.new_x_center[nearest_cluster_index]) ** 2) + ((self.y_coordinates[j] - self.new_y_center[nearest_cluster_index]) ** 2))
+                    distances_b.append(distance)
+            mean_dist_b = sum(distances_b) / len(distances_b)
+
+            silhouettes_for_this_cluster = (mean_dist_b - mean_dist_a) / max(mean_dist_b, mean_dist_a)
+            silhouettes.append(silhouettes_for_this_cluster)
+
+        silhouette_score = sum(silhouettes) / len(silhouettes)
+        print(silhouette_score)
+
+
+
+
 
 
 
@@ -264,6 +341,7 @@ def main():
     myclusters = Clusters()
     myclusters.read_input(sys.argv[1:])
     myclusters.compare()
+    myclusters.calc_silhouette()
 
     # and this
     # myclusters.write_output()
